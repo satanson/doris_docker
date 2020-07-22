@@ -262,9 +262,9 @@ start_doris_hdfs_broker_args(){
   local bootstrap=${1:-"false"};shift
   ip=$(perl -aF/\\s+/ -ne "print \$F[0] if /\b$node\b/" hosts)
   flags="
-  -v ${PWD}/${node}_data:${dorisDockerRoot}/be/storage
-  -v ${PWD}/${node}_logs:${dorisDockerRoot}/be/log
-  -v ${PWD}/hdfs_broker_conf:${dorisDockerRoot}/be/conf
+  -v ${PWD}/${node}_data:${dorisDockerRoot}/apache_hdfs_broker/data
+  -v ${PWD}/${node}_logs:${dorisDockerRoot}/apache_hdfs_broker/log
+  -v ${PWD}/hdfs_broker_conf:${dorisDockerRoot}/apache_hdfs_broker/conf
   --name $node
   --hostname $node
   --ip $ip
@@ -309,3 +309,45 @@ destroy_all_doris_hdfs_broker(){ do_all ${FUNCNAME};}
 bootstrap_all_doris_hdfs_broker(){ do_all ${FUNCNAME};}
 start_all_doris_hdfs_broker(){ do_all ${FUNCNAME};}
 restart_all_doris_hdfs_broker(){ do_all ${FUNCNAME};}
+
+## cluster
+start_doris_cluster(){
+  start_all_doris_fe
+  start_all_doris_be
+  start_all_doris_hdfs_broker
+}
+
+stop_doris_cluster(){
+  stop_all_doris_hdfs_broker
+  stop_all_doris_be
+  stop_all_doris_fe
+}
+
+restart_doris_cluster(){
+  restart_all_doris_hdfs_broker
+  restart_all_doris_be
+  restart_all_doris_fe
+}
+
+bootstrap_doris_cluster(){
+  stop_doris_cluster
+  for fe in ${doris_fe_follower_list};do
+    bootstrap_doris_fe ${fe}
+    sleep 20
+  done
+
+  for fe in ${doris_fe_observer_list};do
+    bootstrap_doris_fe ${fe}
+  done
+
+  sleep 5
+
+  bootstrap_all_doris_be
+  bootstrap_all_doris_hdfs_broker
+}
+
+destroy_doris_cluster(){
+  destroy_all_doris_hdfs_broker
+  destroy_all_doris_be
+  destroy_all_doris_fe
+}
