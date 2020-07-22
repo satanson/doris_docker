@@ -87,7 +87,7 @@ start_doris_fe_args(){
   fi
 
   # bootstrap-mode: cleanup datadir of doris-fe 
-  [ "x${bootstrap}x" != "xfalse" -a -d "${PWD}/${node}_data" ] && rm -fr ${PWD}/${node}_data/*
+  [ "x${bootstrap}x" != "xfalsex" -a -d "${PWD}/${node}_data" ] && rm -fr ${PWD}/${node}_data/*
   mkdir -p ${PWD}/${node}_data
 
   # bootstrap-mode: doris-fe instances other than the first one should register itself to the first one.
@@ -155,7 +155,7 @@ stop_doris_be_args(){
       local ip=$(perl -aF/\\s+/ -ne "print \$F[0] if /\b$node\b/" hosts)
       local heartbeatServicePort=$(perl -lne 'print $1 if /^\s*heartbeat_service_port\s*=\s*(\b\d+\b)/' ${PWD}/doris_be_conf/be.conf)
       heartbeatServicePort=${heartbeatServicePort:-9050}
-      ${basedir}/mysql.sh "ALTER SYSTEM DROP BACKEND '${ip}:${heartbeatServicePort}';"
+      ${basedir}/mysql.sh "ALTER SYSTEM DROPP BACKEND '${ip}:${heartbeatServicePort}';"
     fi
 
     [ -d "${PWD}/${node}_data" ] && rm -fr ${PWD}/${node}_data/*
@@ -199,7 +199,7 @@ start_doris_be_args(){
   [ -d "${PWD}/${node}_logs" ] && rm -fr ${PWD}/${node}_logs/*
   mkdir -p ${PWD}/${node}_logs
 
-  if [ "x${bootstrap}x" != "false" ];then
+  if [ "x${bootstrap}x" != "xfalsex" ];then
     [ -d "${PWD}/${node}_data" ] && rm -fr ${PWD}/${node}_data/*
     mkdir -p ${PWD}/${node}_data
     heartbeatServicePort=$(perl -lne 'print $1 if /^\s*heartbeat_service_port\s*=\s*(\b\d+\b)/' ${PWD}/doris_be_conf/be.conf)
