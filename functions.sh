@@ -21,6 +21,12 @@ killAll(){
   done
 }
 
+isContainerRunning(){
+  local kw=${1:?"missing 'keyword'"}
+  names=$(docker ps -f status=running -f name=${kw} --format={{.Names}})
+  [ -n "${names}" ]
+}
+
 selectOption(){
   test $# -gt 0
   select opt in $*;do

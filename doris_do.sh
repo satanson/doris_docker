@@ -6,23 +6,23 @@ cd ${basedir}
 source ${basedir}/functions.sh
 source ${basedir}/doris_ops.sh
 
-echo "service: "
+yellow_print "service: "
 service=$(selectOption "doris_fe" "doris_be")
 
-echo "cmd: "
-cmd=$(selectOption "restart" "restart_all" "stop" "stop_all" "start" "start_all")
-if isIn ${cmd} "restart_all|stop_all|start_all";then
-  echo "exec: ${cmd}_${service}"
+yellow_print "cmd: "
+cmd=$(selectOption "restart" "restart_all" "stop" "stop_all" "start" "start_all" "bootstrap" "bootstrap_all" "destroy" "destroy_all")
+if isIn ${cmd} "restart_all|stop_all|start_all|bootstrap_all|destroy_all";then
+  green_print "exec: ${cmd}_${service}"
   confirm
   ${cmd}_${service}
-elif isIn ${cmd} "restart|stop|start";then
-  echo "node: "
+elif isIn ${cmd} "restart|stop|start|bootstrap|destroy";then
+  yellow_print "node: "
   if isIn ${service} "doris_fe";then
-    node=$(selectOption $(eval "echo doris_fe{0..$((${doris_fe_num}-1))}"))
+    node=$(selectOption ${doris_fe_list})
   elif isIn ${service} "doris_be";then
-    node=$(selectOption $(eval "echo doris_be{0..$((${doris_be_num}-1))}"))
+    node=$(selectOption ${doris_be_list})
   fi
-  echo "exec: ${cmd}_${service} ${node}"
+  green_print "exec: ${cmd}_${service} ${node}"
   confirm
   ${cmd}_${service} ${node}
 fi

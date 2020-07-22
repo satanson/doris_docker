@@ -109,12 +109,17 @@
 192.168.129.90 kafka-manager
 
 ## doris cluster
-192.168.129.100 doris_fe0
-192.168.129.101 doris_fe1
-192.168.129.102 doris_fe2
-
-192.168.129.110 doris_be0
-192.168.129.111 doris_be1
-192.168.129.112 doris_be2
-
-192.168.129.120 doris_fe_mysql
+# doris-fe follower
+192.168.129.100 doris_fe_follower0
+192.168.129.101 doris_fe_follower1
+192.168.129.102 doris_fe_follower2
+# doris-fe observer
+192.168.129.110 doris_fe_observer0
+192.168.129.111 doris_fe_observer1
+192.168.129.112 doris_fe_observer2
+# doris-be
+192.168.129.120 doris_be0
+192.168.129.121 doris_be1
+192.168.129.122 doris_be2
+# doris mysql client
+192.168.129.130 doris_fe_mysql
