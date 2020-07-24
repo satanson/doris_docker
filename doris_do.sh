@@ -35,6 +35,8 @@ service_op(){
       node=$(selectOption ${doris_fe_list})
     elif isIn ${service} "doris_be";then
       node=$(selectOption ${doris_be_list})
+    elif isIn ${service} "doris_hdfs_broker";then
+      node=$(selectOption ${doris_hdfs_broker_list})
     fi
     green_print "exec: ${cmd}_${service} ${node}"
     confirm

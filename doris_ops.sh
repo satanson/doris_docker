@@ -249,7 +249,7 @@ stop_doris_hdfs_broker_args(){
       local ip=$(perl -aF/\\s+/ -ne "print \$F[0] if /\b$node\b/" hosts)
       local brokerIpcPort=$(perl -lne 'print $1 if /^\s*broker_ipc_port\s*=\s*(\b\d+\b)/' ${PWD}/hdfs_broker_conf/apache_hdfs_broker.conf)
       brokerIpcPort=${brokerIpcPort:-8000}
-      ${basedir}/mysql1.sh "ALTER SYSTEM DROP BROKER ${node} '${ip}:${brokerIpcPort}';"
+      ${basedir}/mysql1.sh "ALTER SYSTEM DROP BROKER hdfs '${ip}:${brokerIpcPort}';"
     fi
 
     [ -d "${PWD}/${node}_data" ] && sudo rm -fr ${PWD}/${node}_data/*
@@ -278,7 +278,7 @@ start_doris_hdfs_broker_args(){
     mkdir -p ${PWD}/${node}_data
     brokerIpcPort=$(perl -lne 'print $1 if /^\s*broker_ipc_port\s*=\s*(\b\d+\b)/' ${PWD}/hdfs_broker_conf/apache_hdfs_broker.conf)
     brokerIpcPort=${brokerIpcPort:-8000}
-    ${basedir}/mysql1.sh "ALTER SYSTEM ADD BROKER ${node} '${ip}:${brokerIpcPort}';"
+    ${basedir}/mysql1.sh "ALTER SYSTEM ADD BROKER hdfs '${ip}:${brokerIpcPort}';"
   fi
   docker run ${dockerFlags} ${flags} apachedoris/doris-dev:build-env-1.2 ${dorisDockerRoot}/apache_hdfs_broker/bin/start_broker.sh 
 }
