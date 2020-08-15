@@ -92,6 +92,8 @@ start_doris_fe_args(){
   -v ${PWD}/${node}_logs:${dorisDockerRoot}/fe/log
   -v ${PWD}/${node}_run:${dorisDockerRoot}/fe/run
   -v ${PWD}/doris_fe_conf:${dorisDockerRoot}/fe/conf
+  -v /home/grakra/bin/greys:/root/greys
+  -v /home/grakra/.greys:/root/.greys
   -e PID_DIR=${dorisDockerRoot}/fe/run
   --name $node
   --hostname $node
