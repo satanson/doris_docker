@@ -114,22 +114,27 @@
 192.168.129.100 doris_fe_follower0
 192.168.129.101 doris_fe_follower1
 192.168.129.102 doris_fe_follower2
+192.168.129.103 doris_fe_follower3
+192.168.129.104 doris_fe_follower4
 
 # doris-fe observer
-192.168.129.110 doris_fe_observer0
-192.168.129.111 doris_fe_observer1
-192.168.129.112 doris_fe_observer2
+# 192.168.129.110 doris_fe_observer0
+# 192.168.129.111 doris_fe_observer1
+# 192.168.129.112 doris_fe_observer2
 
 # doris-be
 192.168.129.120 doris_be0
 192.168.129.121 doris_be1
 192.168.129.122 doris_be2
+192.168.129.123 doris_be3
+192.168.129.124 doris_be4
+192.168.129.125 doris_be5
 
 # doris mysql client
 192.168.129.130 doris_fe_mysql0
 192.168.129.131 doris_fe_mysql1
 
 # doris hdfs-broker
-192.168.129.140 doris_hdfs_broker0
-192.168.129.141 doris_hdfs_broker1
-192.168.129.142 doris_hdfs_broker2
+# 192.168.129.140 doris_hdfs_broker0
+# 192.168.129.141 doris_hdfs_broker1
+# 192.168.129.142 doris_hdfs_broker2

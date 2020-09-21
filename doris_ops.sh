@@ -3,15 +3,17 @@ set -e -o pipefail
 basedir=$(cd $(dirname $(readlink -f ${BASH_SOURCE:-$0}));pwd)
 test  ${basedir} == ${PWD}
 dorisLocalRoot=$(cd ${basedir}/../doris_all;pwd)
-dorisDockerRoot=/root/doris
+dorisDockerRoot=/home/grakra/doris
 
-doris_fe_list=$(perl -lne 'print $1 if /^\s*\d+(?:\.\d+){3}\s+(doris_fe_(:?follower|observer)\d+)\s*$/' ${PWD}/hosts )
 doris_fe_follower_list=$(perl -lne 'print $1 if /^\s*\d+(?:\.\d+){3}\s+(doris_fe_follower\d+)\s*$/' ${PWD}/hosts )
+doris_fe_follower_list=$(echo ${doris_fe_follower_list}|perl -aF'\s+' -lne 'print join qq/ /, @F[0..2]')
 doris_fe_observer_list=$(perl -lne 'print $1 if /^\s*\d+(?:\.\d+){3}\s+(doris_fe_observer\d+)\s*$/' ${PWD}/hosts )
+doris_fe_list="${doris_fe_follower_list} ${doris_fe_observer_list}"
 doris_be_list=$(perl -lne 'print $1 if /^\s*\d+(?:\.\d+){3}\s+(doris_be\d+)\s*$/' ${PWD}/hosts )
+doris_be_list=$(echo ${doris_be_list}|perl -aF'\s+' -lne 'print join qq/ /, @F[0..2]')
 doris_hdfs_broker_list=$(perl -lne 'print $1 if /^\s*\d+(?:\.\d+){3}\s+(doris_hdfs_broker\d+)\s*$/' ${PWD}/hosts )
 
-dockerFlags="-tid --rm -u root --privileged --net static_net0 -v ${PWD}/hosts:/etc/hosts -v ${dorisLocalRoot}:${dorisDockerRoot}"
+dockerFlags="-tid --rm -u grakra -w /home/grakra --privileged --net static_net0 -v ${PWD}/hosts:/etc/hosts -v ${dorisLocalRoot}:${dorisDockerRoot}"
 
 stop_node(){
   local name=$1;shift
@@ -40,12 +42,12 @@ stop_doris_fe_args(){
         echo $(red_print "Role of doris-fe must be FOLLOWER|OBSERVER") >&2;
         exit 1;
       fi
-      if ${basedir}/mysql1.sh "SHOW PROC '/frontends';" | grep ${node};then
-        ${basedir}/mysql1.sh "ALTER SYSTEM DROP ${role} '${ip}:${editLogPort}';"
+      if ${basedir}/mysql_native.sh "SHOW PROC '/frontends';" | grep ${node};then
+        ${basedir}/mysql_native.sh "ALTER SYSTEM DROP ${role} '${ip}:${editLogPort}';"
       fi
     fi
 
-    [ -d "${PWD}/${node}_data" ] && sudo rm -fr ${PWD}/${node}_data/*
+    [ -d "${PWD}/${node}_data" ] &&  rm -fr ${PWD}/${node}_data/*
     mkdir -p ${PWD}/${node}_data
   fi
 }
@@ -92,8 +94,6 @@ start_doris_fe_args(){
   -v ${PWD}/${node}_logs:${dorisDockerRoot}/fe/log
   -v ${PWD}/${node}_run:${dorisDockerRoot}/fe/run
   -v ${PWD}/doris_fe_conf:${dorisDockerRoot}/fe/conf
-  -v /home/grakra/bin/greys:/root/greys
-  -v /home/grakra/.greys:/root/.greys
   -e PID_DIR=${dorisDockerRoot}/fe/run
   --name $node
   --hostname $node
@@ -113,7 +113,7 @@ start_doris_fe_args(){
   fi
 
   # bootstrap-mode: cleanup datadir of doris-fe 
-  [ "x${bootstrap}x" != "xfalsex" -a -d "${PWD}/${node}_data" ] && sudo rm -fr ${PWD}/${node}_data/*
+  [ "x${bootstrap}x" != "xfalsex" -a -d "${PWD}/${node}_data" ] &&  rm -fr ${PWD}/${node}_data/*
   mkdir -p ${PWD}/${node}_data
 
   # bootstrap-mode: doris-fe instances other than the first one should register itself to the first one.
@@ -122,17 +122,23 @@ start_doris_fe_args(){
   local helpOption=""
   if [ "x${bootstrap}x" != "xfalsex" ] && isContainerRunning doris_fe_follower;then
     echo "Another doris_fe instances have already started, so get editlog_port via mysql"
-    masterFe=$(${basedir}/mysql1.sh "SHOW PROC '/frontends';" |perl -aF'\s+' -lne  'print "$F[1]:$F[3]" if /doris_fe/ && $F[8] eq qq/true/'|head -1)
+    masterFe=$(${basedir}/mysql_native.sh "SHOW PROC '/frontends';" |perl -aF'\s+' -lne  'print "$F[1]:$F[3]" if /doris_fe/ && $F[8] eq qq/true/'|head -1)
     editLogPort=$(perl -lne 'print $1 if /^\s*edit_log_port\s*=\s*(\b\d+\b)/' ${PWD}/doris_fe_conf/fe.conf)
     editLogPort=${editLogPort:-9010}
-    ${basedir}/mysql1.sh "ALTER SYSTEM ADD ${role} '${ip}:${editLogPort}'"
+
+    exists=$(${basedir}/mysql_native.sh "SHOW PROC '/frontends';" |perl -aF'\s+' -lne  "print qq/ok/ if /${node}/")
+    if [ -n "${exists}" ];then
+      ${basedir}/mysql_native.sh "ALTER SYSTEM DROP ${role} '${ip}:${editLogPort}'"
+    fi
+    ${basedir}/mysql_native.sh "ALTER SYSTEM ADD ${role} '${ip}:${editLogPort}'"
     helpOption="--helper ${masterFe}"
   else
     echo "It is the first doris_fe instance or non-bootstrap startup: ${node}"
   fi
 
   # run docker
-  docker run ${dockerFlags} ${flags} apachedoris/doris-dev:build-env-1.2 ${dorisDockerRoot}/fe/bin/start_fe.sh ${helpOption}
+  echo docker run ${dockerFlags} ${flags} apachedoris/doris-dev-grakra:build-env-1.2 ${dorisDockerRoot}/fe/bin/start_fe.sh ${helpOption}
+  docker run ${dockerFlags} ${flags} apachedoris/doris-dev-grakra:build-env-1.2 ${dorisDockerRoot}/fe/bin/start_fe.sh ${helpOption}
 }
 
 bootstrap_doris_fe(){
@@ -174,10 +180,10 @@ stop_doris_be_args(){
       local ip=$(perl -aF/\\s+/ -ne "print \$F[0] if /\b$node\b/" hosts)
       local heartbeatServicePort=$(perl -lne 'print $1 if /^\s*heartbeat_service_port\s*=\s*(\b\d+\b)/' ${PWD}/doris_be_conf/be.conf)
       heartbeatServicePort=${heartbeatServicePort:-9050}
-      ${basedir}/mysql1.sh "ALTER SYSTEM DROPP BACKEND '${ip}:${heartbeatServicePort}';"
+      ${basedir}/mysql_native.sh "ALTER SYSTEM DROPP BACKEND '${ip}:${heartbeatServicePort}';"
     fi
 
-    [ -d "${PWD}/${node}_data" ] && sudo rm -fr ${PWD}/${node}_data/*
+    [ -d "${PWD}/${node}_data" ] &&  rm -fr ${PWD}/${node}_data/*
     mkdir -p ${PWD}/${node}_data
   fi
 }
@@ -207,14 +213,15 @@ start_doris_be_args(){
   mkdir -p ${PWD}/${node}_logs
 
   if [ "x${bootstrap}x" != "xfalsex" ];then
-    [ -d "${PWD}/${node}_data" ] && sudo rm -fr ${PWD}/${node}_data/*
+    [ -d "${PWD}/${node}_data" ] &&  rm -fr ${PWD}/${node}_data/*
     mkdir -p ${PWD}/${node}_data
     heartbeatServicePort=$(perl -lne 'print $1 if /^\s*heartbeat_service_port\s*=\s*(\b\d+\b)/' ${PWD}/doris_be_conf/be.conf)
     heartbeatServicePort=${heartbeatServicePort:-9050}
-    ${basedir}/mysql1.sh "ALTER SYSTEM ADD BACKEND '${ip}:${heartbeatServicePort}';"
+    ${basedir}/mysql_native.sh "ALTER SYSTEM ADD BACKEND '${ip}:${heartbeatServicePort}';"
   fi
 
-  docker run ${dockerFlags} ${flags} apachedoris/doris-dev:build-env-1.2 ${dorisDockerRoot}/be/bin/start_be.sh 
+  echo docker run ${dockerFlags} ${flags} apachedoris/doris-dev-grakra:build-env-1.2 ${dorisDockerRoot}/be/bin/start_be.sh 
+  docker run ${dockerFlags} ${flags} apachedoris/doris-dev-grakra:build-env-1.2 ${dorisDockerRoot}/be/bin/start_be.sh 
 }
 
 bootstrap_doris_be(){
@@ -251,10 +258,10 @@ stop_doris_hdfs_broker_args(){
       local ip=$(perl -aF/\\s+/ -ne "print \$F[0] if /\b$node\b/" hosts)
       local brokerIpcPort=$(perl -lne 'print $1 if /^\s*broker_ipc_port\s*=\s*(\b\d+\b)/' ${PWD}/hdfs_broker_conf/apache_hdfs_broker.conf)
       brokerIpcPort=${brokerIpcPort:-8000}
-      ${basedir}/mysql1.sh "ALTER SYSTEM DROP BROKER hdfs '${ip}:${brokerIpcPort}';"
+      ${basedir}/mysql_native.sh "ALTER SYSTEM DROP BROKER hdfs '${ip}:${brokerIpcPort}';"
     fi
 
-    [ -d "${PWD}/${node}_data" ] && sudo rm -fr ${PWD}/${node}_data/*
+    [ -d "${PWD}/${node}_data" ] &&  rm -fr ${PWD}/${node}_data/*
     mkdir -p ${PWD}/${node}_data
   fi
 }
@@ -276,13 +283,13 @@ start_doris_hdfs_broker_args(){
   mkdir -p ${PWD}/${node}_logs
 
   if [ "x${bootstrap}x" != "xfalsex" ];then
-    [ -d "${PWD}/${node}_data" ] && sudo rm -fr ${PWD}/${node}_data/*
+    [ -d "${PWD}/${node}_data" ] &&  rm -fr ${PWD}/${node}_data/*
     mkdir -p ${PWD}/${node}_data
     brokerIpcPort=$(perl -lne 'print $1 if /^\s*broker_ipc_port\s*=\s*(\b\d+\b)/' ${PWD}/hdfs_broker_conf/apache_hdfs_broker.conf)
     brokerIpcPort=${brokerIpcPort:-8000}
-    ${basedir}/mysql1.sh "ALTER SYSTEM ADD BROKER hdfs '${ip}:${brokerIpcPort}';"
+    ${basedir}/mysql_native.sh "ALTER SYSTEM ADD BROKER hdfs '${ip}:${brokerIpcPort}';"
   fi
-  docker run ${dockerFlags} ${flags} apachedoris/doris-dev:build-env-1.2 ${dorisDockerRoot}/apache_hdfs_broker/bin/start_broker.sh 
+  docker run ${dockerFlags} ${flags} apachedoris/doris-dev-grakra:build-env-1.2 ${dorisDockerRoot}/apache_hdfs_broker/bin/start_broker.sh 
 }
 
 stop_doris_hdfs_broker(){

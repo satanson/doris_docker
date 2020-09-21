@@ -7,3 +7,5 @@
 *~
 *.log
 *_run
+*.txt
+table2_hdfs_load_*.sql
